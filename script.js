@@ -1,5 +1,5 @@
 // ============================================================
-//  داده‌ها (همه خالی شروع می‌شوند)
+//  داده‌ها
 // ============================================================
 let inventory = [];
 let files = [];
@@ -12,7 +12,7 @@ let deleteTarget = null;
 let deleteType = 'product';
 
 // ============================================================
-//  تبدیل خودکار به حروف بزرگ (فقط حروف انگلیسی)
+//  تبدیل خودکار به حروف بزرگ
 // ============================================================
 function autoUpperCase(input) {
     if (/[a-zA-Z]/.test(input.value)) {
@@ -21,7 +21,7 @@ function autoUpperCase(input) {
 }
 
 // ============================================================
-//  فیلدهای شرطی (دینامیک) بر اساس دسته‌بندی
+//  فیلدهای شرطی (دینامیک) - بدون placeholder
 // ============================================================
 function updateDynamicFields() {
     const cat = document.getElementById('catInput').value.trim();
@@ -29,7 +29,6 @@ function updateDynamicFields() {
     container.innerHTML = '';
 
     if (cat === 'دوربین' || cat === 'دزدگیر') {
-        // فقط شماره سریال
         container.innerHTML = `
             <div class="col-md-3">
                 <label class="form-label fw-bold">شماره سریال</label>
@@ -37,22 +36,25 @@ function updateDynamicFields() {
             </div>
         `;
     } else if (cat === 'هارد') {
-        // فقط عمر و حجم (بدون واحد)
         container.innerHTML = `
-            <div class="col-md-3">
-                <label class="form-label fw-bold">عمر</label>
-                <input type="number" class="form-control form-control-lg" id="lifeInput" min="0">
+            <div class="col-md-3 health-percent health-percent-lg">
+                <label class="form-label fw-bold">سلامت (%)</label>
+                <input type="number" class="form-control form-control-lg" id="healthInput" min="0" max="100">
             </div>
-            <div class="col-md-3">
+            <div class="col-md-4">
                 <label class="form-label fw-bold">حجم</label>
-                <input type="number" class="form-control form-control-lg" id="volumeInput" min="0" step="0.1">
+                <div class="volume-input-group volume-input-group-lg">
+                    <select class="unit-selector" id="volumeUnitInput">
+                        <option value="GB">GB</option>
+                        <option value="TB">TB</option>
+                    </select>
+                    <input type="number" class="form-control form-control-lg" id="volumeValueInput" min="0" step="0.1">
+                </div>
             </div>
         `;
     }
-    // برای سایر دسته‌بندی‌ها هیچ فیلدی اضافه نمی‌شود
 }
 
-// همچنین هنگام ویرایش، فیلدهای شرطی را نمایش بده
 function updateEditDynamicFields(category) {
     const container = document.getElementById('editDynamicFields');
     container.innerHTML = '';
@@ -67,13 +69,19 @@ function updateEditDynamicFields(category) {
     } else if (category === 'هارد') {
         container.innerHTML = `
             <div class="row g-3">
-                <div class="col-md-6">
-                    <label class="form-label fw-bold">عمر</label>
-                    <input type="number" class="form-control" id="editLife" min="0">
+                <div class="col-md-6 health-percent">
+                    <label class="form-label fw-bold">سلامت (%)</label>
+                    <input type="number" class="form-control" id="editHealth" min="0" max="100">
                 </div>
                 <div class="col-md-6">
                     <label class="form-label fw-bold">حجم</label>
-                    <input type="number" class="form-control" id="editVolume" min="0" step="0.1">
+                    <div class="volume-input-group">
+                        <select class="unit-selector" id="editVolumeUnit">
+                            <option value="GB">GB</option>
+                            <option value="TB">TB</option>
+                        </select>
+                        <input type="number" class="form-control" id="editVolumeValue" min="0" step="0.1">
+                    </div>
                 </div>
             </div>
         `;
@@ -81,7 +89,7 @@ function updateEditDynamicFields(category) {
 }
 
 // ============================================================
-//  پیشنهادات دسته‌بندی (اتوکامپلیت)
+//  پیشنهادات دسته‌بندی
 // ============================================================
 function showCategorySuggestions() {
     const input = document.getElementById('catInput');
@@ -97,10 +105,9 @@ function showCategorySuggestions() {
 function selectCategory(val) {
     document.getElementById('catInput').value = val;
     document.getElementById('autocomplete-list').style.display = 'none';
-    updateDynamicFields(); // به‌روزرسانی فیلدهای شرطی
+    updateDynamicFields();
 }
 
-// بستن لیست با کلیک بیرون
 document.addEventListener('click', function(e) {
     if (!e.target.closest('.position-relative') || e.target.id !== 'catInput') {
         document.getElementById('autocomplete-list').style.display = 'none';
@@ -114,53 +121,42 @@ document.addEventListener('click', function(e) {
 });
 
 // ============================================================
-//  پیشنهادات هوشمند برند و مدل بر اساس دسته‌بندی
+//  پیشنهادات هوشمند برند و مدل
 // ============================================================
 function getBrandSuggestions() {
     const cat = document.getElementById('catInput').value.trim();
     if (!cat) return [];
     const brands = [...new Set(inventory.filter(item => item.category === cat).map(item => item.brand))];
-    return brands.filter(b => b); // حذف مقادیر خالی
+    return brands.filter(b => b);
 }
-
 function getModelSuggestions() {
     const cat = document.getElementById('catInput').value.trim();
     if (!cat) return [];
     const models = [...new Set(inventory.filter(item => item.category === cat).map(item => item.model))];
     return models.filter(m => m);
 }
-
 function showBrandSuggestions() {
     const input = document.getElementById('brandInput');
     const val = input.value.trim().toUpperCase();
     const suggestions = getBrandSuggestions().filter(b => b.includes(val));
     const container = document.getElementById('brand-suggestions');
-    if (!val || suggestions.length === 0) {
-        container.style.display = 'none';
-        return;
-    }
+    if (!val || suggestions.length === 0) { container.style.display = 'none'; return; }
     container.innerHTML = suggestions.map(b => `<div onclick="selectBrand('${b}')">${b}</div>`).join('');
     container.style.display = 'block';
 }
-
 function selectBrand(brand) {
     document.getElementById('brandInput').value = brand;
     document.getElementById('brand-suggestions').style.display = 'none';
 }
-
 function showModelSuggestions() {
     const input = document.getElementById('modelInput');
     const val = input.value.trim().toUpperCase();
     const suggestions = getModelSuggestions().filter(m => m.includes(val));
     const container = document.getElementById('model-suggestions');
-    if (!val || suggestions.length === 0) {
-        container.style.display = 'none';
-        return;
-    }
+    if (!val || suggestions.length === 0) { container.style.display = 'none'; return; }
     container.innerHTML = suggestions.map(m => `<div onclick="selectModel('${m}')">${m}</div>`).join('');
     container.style.display = 'block';
 }
-
 function selectModel(model) {
     document.getElementById('modelInput').value = model;
     document.getElementById('model-suggestions').style.display = 'none';
@@ -184,7 +180,7 @@ document.getElementById('confirmDeleteBtn').addEventListener('click', function()
 });
 
 // ============================================================
-//  عملیات کالا (با فیلدهای شرطی)
+//  عملیات کالا
 // ============================================================
 function deleteProduct(id) {
     const item = inventory.find(p => p.id === id);
@@ -209,14 +205,14 @@ function openEditModal(id) {
     document.getElementById('editAsset').value = item.asset || '';
     document.getElementById('editProductCode').value = item.productCode || '';
 
-    // نمایش فیلدهای شرطی در ویرایش
     updateEditDynamicFields(item.category);
-    // پر کردن مقادیر فیلدهای شرطی
+
     if (item.category === 'دوربین' || item.category === 'دزدگیر') {
         document.getElementById('editSerialNumber').value = item.serialNumber || '';
     } else if (item.category === 'هارد') {
-        document.getElementById('editLife').value = item.life || '';
-        document.getElementById('editVolume').value = item.volume || '';
+        document.getElementById('editHealth').value = item.health || '';
+        document.getElementById('editVolumeValue').value = item.volumeValue || '';
+        document.getElementById('editVolumeUnit').value = item.volumeUnit || 'GB';
     }
 
     new bootstrap.Modal(document.getElementById('editModal')).show();
@@ -231,7 +227,6 @@ function saveEdit() {
     const asset = document.getElementById('editAsset').value.trim();
     const productCode = document.getElementById('editProductCode').value.trim();
 
-    // اعتبارسنجی فیلدهای ضروری
     if (!category || !model || !shelf || !productCode) {
         alert('لطفاً تمام فیلدهای ضروری (دسته‌بندی، مدل، کد قفسه، کد محصول) را پر کنید!');
         return;
@@ -250,23 +245,24 @@ function saveEdit() {
     item.asset = asset || '';
     item.productCode = productCode;
 
-    // ذخیره فیلدهای شرطی
     if (category === 'دوربین' || category === 'دزدگیر') {
         item.serialNumber = document.getElementById('editSerialNumber').value.trim() || '';
-        delete item.life;
-        delete item.volume;
+        delete item.health;
+        delete item.volumeValue;
+        delete item.volumeUnit;
     } else if (category === 'هارد') {
-        item.life = document.getElementById('editLife').value.trim() || '';
-        item.volume = document.getElementById('editVolume').value.trim() || '';
+        item.health = document.getElementById('editHealth').value.trim() || '';
+        item.volumeValue = document.getElementById('editVolumeValue').value.trim() || '';
+        item.volumeUnit = document.getElementById('editVolumeUnit').value || 'GB';
         delete item.serialNumber;
     } else {
         delete item.serialNumber;
-        delete item.life;
-        delete item.volume;
+        delete item.health;
+        delete item.volumeValue;
+        delete item.volumeUnit;
     }
 
     if (!categories.includes(category)) categories.push(category);
-
     bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
     renderCategoryTable();
     renderReport();
@@ -281,7 +277,6 @@ function addProduct() {
     const asset = document.getElementById('assetInput').value.trim();
     const productCode = document.getElementById('productCodeInput').value.trim();
 
-    // اعتبارسنجی فیلدهای ضروری
     if (!cat || !model || !shelf || !productCode) {
         alert('لطفاً تمام فیلدهای ضروری (دسته‌بندی، مدل، کد قفسه، کد محصول) را پر کنید!');
         return;
@@ -305,18 +300,17 @@ function addProduct() {
         date: dateStr
     };
 
-    // افزودن فیلدهای شرطی
     if (cat === 'دوربین' || cat === 'دزدگیر') {
         newItem.serialNumber = document.getElementById('serialNumberInput')?.value.trim() || '';
     } else if (cat === 'هارد') {
-        newItem.life = document.getElementById('lifeInput')?.value.trim() || '';
-        newItem.volume = document.getElementById('volumeInput')?.value.trim() || '';
+        newItem.health = document.getElementById('healthInput')?.value.trim() || '';
+        newItem.volumeValue = document.getElementById('volumeValueInput')?.value.trim() || '';
+        newItem.volumeUnit = document.getElementById('volumeUnitInput')?.value || 'GB';
     }
 
     inventory.push(newItem);
     if (!categories.includes(cat)) categories.push(cat);
 
-    // پاک کردن فرم
     document.getElementById('catInput').value = '';
     document.getElementById('brandInput').value = '';
     document.getElementById('modelInput').value = '';
@@ -334,7 +328,35 @@ function addProduct() {
 }
 
 // ============================================================
-//  گزارش کامل (با نمایش ویژگی‌های اضافی)
+//  دکمه ثبت فایل (سبز لجنی)
+// ============================================================
+function addFileFromProduct() {
+    const cat = document.getElementById('catInput').value.trim();
+    const productCode = document.getElementById('productCodeInput').value.trim();
+
+    if (!cat || !productCode) {
+        alert('لطفاً ابتدا دسته‌بندی و کد محصول را وارد کنید!');
+        return;
+    }
+
+    const now = new Date().toISOString().split('T')[0];
+    const fileName = `فایل_${cat}_${productCode || 'بدون کد'}.pdf`;
+
+    files.push({
+        id: Date.now(),
+        name: fileName,
+        category: cat,
+        date: now,
+        desc: `فایل مرتبط با کالای ${cat} - کد محصول: ${productCode}`
+    });
+
+    renderFiles();
+    updateFilterOptions();
+    alert(`فایل با نام "${fileName}" در بخش فایل‌ها ثبت شد.`);
+}
+
+// ============================================================
+//  گزارش کامل
 // ============================================================
 function renderReport() {
     const search = document.getElementById('reportSearch').value.trim().toLowerCase();
@@ -409,7 +431,9 @@ function renderReport() {
                                 if (it.category === 'دوربین' || it.category === 'دزدگیر') {
                                     extra = `شماره سریال: ${it.serialNumber || '-'}`;
                                 } else if (it.category === 'هارد') {
-                                    extra = `عمر: ${it.life || '-'}، حجم: ${it.volume || '-'}`;
+                                    const health = it.health ? `${it.health}%` : '-';
+                                    const volume = (it.volumeValue && it.volumeUnit) ? `${it.volumeValue} ${it.volumeUnit}` : '-';
+                                    extra = `سلامت: ${health}، حجم: ${volume}`;
                                 } else {
                                     extra = '-';
                                 }
@@ -456,26 +480,123 @@ function toggleDetail(key) {
 function applyFilter() { currentPage = 1; renderReport(); }
 
 function exportCategoryExcel() {
-    const data = inventory.map(item => ({
-        'دسته‌بندی': item.category, 'برند': item.brand || '', 'مدل': item.model,
-        'کد قفسه': item.shelf, 'کد اموال': item.asset || '', 'کد محصول': item.productCode,
-        'شماره سریال': item.serialNumber || '', 'عمر': item.life || '', 'حجم': item.volume || '',
-        'تاریخ ثبت': item.date
-    }));
+    const data = inventory.map(item => {
+        let health = '';
+        let volume = '';
+        if (item.category === 'هارد') {
+            health = item.health ? `${item.health}%` : '';
+            volume = (item.volumeValue && item.volumeUnit) ? `${item.volumeValue} ${item.volumeUnit}` : '';
+        }
+        return {
+            'دسته‌بندی': item.category,
+            'برند': item.brand || '',
+            'مدل': item.model,
+            'کد قفسه': item.shelf,
+            'کد اموال': item.asset || '',
+            'کد محصول': item.productCode,
+            'شماره سریال': (item.category === 'دوربین' || item.category === 'دزدگیر') ? (item.serialNumber || '') : '',
+            'سلامت': health,
+            'حجم': volume,
+            'تاریخ ثبت': item.date
+        };
+    });
     downloadExcel(data, 'دسته_بندی_اجناس');
 }
+
 function exportReportExcel() {
-    const data = filteredData.map(item => ({
-        'دسته‌بندی': item.category, 'برند': item.brand || '', 'مدل': item.model,
-        'کد قفسه': item.shelf, 'کد اموال': item.asset || '', 'کد محصول': item.productCode,
-        'شماره سریال': item.serialNumber || '', 'عمر': item.life || '', 'حجم': item.volume || '',
-        'تاریخ ثبت': item.date
-    }));
+    const data = filteredData.map(item => {
+        let health = '';
+        let volume = '';
+        if (item.category === 'هارد') {
+            health = item.health ? `${item.health}%` : '';
+            volume = (item.volumeValue && item.volumeUnit) ? `${item.volumeValue} ${item.volumeUnit}` : '';
+        }
+        return {
+            'دسته‌بندی': item.category,
+            'برند': item.brand || '',
+            'مدل': item.model,
+            'کد قفسه': item.shelf,
+            'کد اموال': item.asset || '',
+            'کد محصول': item.productCode,
+            'شماره سریال': (item.category === 'دوربین' || item.category === 'دزدگیر') ? (item.serialNumber || '') : '',
+            'سلامت': health,
+            'حجم': volume,
+            'تاریخ ثبت': item.date
+        };
+    });
     downloadExcel(data, 'گزارش_کامل');
 }
 
 // ============================================================
-//  مدیریت فایل‌ها (بدون تغییر)
+//  خروجی اکسل با استایل (راست‌چین، هدر سبز، سطرهای متناوب)
+// ============================================================
+function downloadExcel(data, filename) {
+    if (data.length === 0) {
+        alert('داده‌ای برای خروجی وجود ندارد!');
+        return;
+    }
+
+    const headers = Object.keys(data[0]);
+    const rows = data.map(item => headers.map(h => item[h] || ''));
+
+    const wb = XLSX.utils.book_new();
+    const wsData = [headers, ...rows];
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+    const colWidths = headers.map(h => ({ wch: Math.max(h.length * 1.5, 15) }));
+    ws['!cols'] = colWidths;
+
+    const range = XLSX.utils.decode_range(ws['!ref']);
+    for (let R = range.s.r; R <= range.e.r; R++) {
+        for (let C = range.s.c; C <= range.e.c; C++) {
+            const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+            if (!ws[cellAddress]) continue;
+            if (!ws[cellAddress].s) ws[cellAddress].s = {};
+
+            ws[cellAddress].s.alignment = {
+                horizontal: 'right',
+                vertical: 'center',
+                wrapText: true
+            };
+
+            if (R === 0) {
+                ws[cellAddress].s.font = {
+                    bold: true,
+                    color: { rgb: "FFFFFF" },
+                    size: 12
+                };
+                ws[cellAddress].s.fill = {
+                    patternType: "solid",
+                    fgColor: { rgb: "1A7431" }
+                };
+                ws[cellAddress].s.border = {
+                    top: { style: "thin", color: { rgb: "FFFFFF" } },
+                    bottom: { style: "thin", color: { rgb: "FFFFFF" } },
+                    left: { style: "thin", color: { rgb: "FFFFFF" } },
+                    right: { style: "thin", color: { rgb: "FFFFFF" } }
+                };
+            } else {
+                ws[cellAddress].s.fill = {
+                    patternType: "solid",
+                    fgColor: { rgb: R % 2 === 0 ? "F2F2F2" : "FFFFFF" }
+                };
+                ws[cellAddress].s.font = { size: 11 };
+                ws[cellAddress].s.border = {
+                    top: { style: "thin", color: { rgb: "D0D0D0" } },
+                    bottom: { style: "thin", color: { rgb: "D0D0D0" } },
+                    left: { style: "thin", color: { rgb: "D0D0D0" } },
+                    right: { style: "thin", color: { rgb: "D0D0D0" } }
+                };
+            }
+        }
+    }
+
+    XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+    XLSX.writeFile(wb, `${filename}.xlsx`);
+}
+
+// ============================================================
+//  مدیریت فایل‌ها
 // ============================================================
 function renderFiles() {
     const search = document.getElementById('fileSearch').value.trim().toLowerCase();
@@ -571,7 +692,10 @@ function addMockFile() {
 }
 function exportFilesExcel() {
     const data = files.map(f => ({
-        'نام فایل': f.name, 'دسته‌بندی': f.category, 'تاریخ': f.date, 'توضیحات': f.desc
+        'نام فایل': f.name,
+        'دسته‌بندی': f.category,
+        'تاریخ': f.date,
+        'توضیحات': f.desc
     }));
     downloadExcel(data, 'لیست_فایل‌ها');
 }
@@ -579,13 +703,6 @@ function exportFilesExcel() {
 // ============================================================
 //  توابع کمکی
 // ============================================================
-function downloadExcel(data, filename) {
-    if (data.length === 0) { alert('داده‌ای برای خروجی وجود ندارد!'); return; }
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(data);
-    XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
-    XLSX.writeFile(wb, `${filename}.xlsx`);
-}
 function updateFilterOptions() {
     const cats = [...new Set(inventory.map(i => i.category))];
     ['filterCategory', 'fileCategoryFilter'].forEach(id => {
@@ -607,7 +724,9 @@ function renderCategoryTable() {
         if (item.category === 'دوربین' || item.category === 'دزدگیر') {
             extra = `شماره سریال: ${item.serialNumber || '-'}`;
         } else if (item.category === 'هارد') {
-            extra = `عمر: ${item.life || '-'}، حجم: ${item.volume || '-'}`;
+            const health = item.health ? `${item.health}%` : '-';
+            const volume = (item.volumeValue && item.volumeUnit) ? `${item.volumeValue} ${item.volumeUnit}` : '-';
+            extra = `سلامت: ${health}، حجم: ${volume}`;
         } else {
             extra = '-';
         }
@@ -633,7 +752,7 @@ function renderCategoryTable() {
 }
 
 // ============================================================
-//  افکت سه‌بعدی
+//  افکت سه‌بعدی (فقط روی کارت، بدون تأثیر روی فرزندان)
 // ============================================================
 document.querySelectorAll('.card-3d').forEach(card => {
     card.addEventListener('mousemove', function(e) {
@@ -642,14 +761,14 @@ document.querySelectorAll('.card-3d').forEach(card => {
         const y = e.clientY - rect.top;
         const centerX = rect.width / 2;
         const centerY = rect.height / 2;
-        const rotateX = ((y - centerY) / centerY) * -8;
-        const rotateY = ((x - centerX) / centerX) * 8;
+        const rotateX = ((y - centerY) / centerY) * -6;
+        const rotateY = ((x - centerX) / centerX) * 6;
         this.style.transform = `rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.02)`;
-        this.style.transition = 'transform 0.1s ease';
+        this.style.transition = 'transform 0.08s ease';
     });
     card.addEventListener('mouseleave', function() {
         this.style.transform = 'rotateX(0deg) rotateY(0deg) scale(1)';
-        this.style.transition = 'transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+        this.style.transition = 'transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
     });
 });
 
