@@ -62,7 +62,7 @@
                             <input type="text" class="form-control form-control-lg" id="brandInput" oninput="autoUpperCase(this); showBrandSuggestions();">
                             <div id="brand-suggestions" class="autocomplete-items" style="display:none;"></div>
                         </div>
-                        <!-- مدل (ضروری با پیشنهاد هوشمند) -->
+                        <!-- مدل (ضروری) -->
                         <div class="col-md-2">
                             <label class="form-label fw-bold">مدل <span class="text-danger">*</span></label>
                             <input type="text" class="form-control form-control-lg" id="modelInput" oninput="autoUpperCase(this); showModelSuggestions();">
@@ -90,6 +90,8 @@
 
                     <div class="mt-4 d-flex gap-3 flex-wrap">
                         <button class="btn btn-green btn-lg px-5" onclick="addProduct()"><i class="fas fa-save me-2"></i>ثبت کالا</button>
+                        <!-- دکمه جدید ثبت فایل با رنگ سبز لجنی -->
+                        <button class="btn btn-forest btn-lg px-5" onclick="addFileFromProduct()"><i class="fas fa-file-upload me-2"></i>ثبت فایل</button>
                         <button class="btn btn-rose btn-lg px-5" onclick="exportCategoryExcel()"><i class="fas fa-file-excel me-2"></i>خروجی اکسل</button>
                     </div>
                 </div>
@@ -107,7 +109,7 @@
                 </div>
             </div>
 
-            <!-- بخش گزارش -->
+            <!-- بخش گزارش (بدون تغییر) -->
             <div class="tab-pane fade" id="report" role="tabpanel">
                 <div class="card-3d">
                     <div class="d-flex flex-wrap justify-content-between align-items-center">
@@ -127,7 +129,7 @@
                 </div>
             </div>
 
-            <!-- بخش فایل‌ها -->
+            <!-- بخش فایل‌ها (بدون تغییر) -->
             <div class="tab-pane fade" id="files" role="tabpanel">
                 <div class="card-3d">
                     <div class="d-flex flex-wrap justify-content-between align-items-center">
@@ -158,8 +160,6 @@
     </div>
 
     <!-- مودال‌ها (همان‌های قبلی) -->
-    <!-- ... (بقیه مودال‌ها بدون تغییر) ... -->
-
     <div class="modal fade" id="filterModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content p-4">
@@ -245,8 +245,10 @@
         </div>
     </div>
 
+    <!-- کتابخانه‌های JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- استفاده از xlsx-style به جای xlsx برای استایل‌دهی -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx-style/0.8.13/xlsx.full.min.js"></script>
     <script src="script.js"></script>
 
 </body>
