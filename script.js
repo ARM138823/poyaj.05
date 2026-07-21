@@ -12,6 +12,55 @@ let deleteTarget = null;
 let deleteType = 'product';
 
 // ============================================================
+//  تاریخ و ساعت شمسی (بالای صفحه)
+// ============================================================
+function updateDateTime() {
+    const now = moment().locale('fa');
+    document.getElementById('currentDateTime').innerHTML = 
+        `<i class="far fa-clock me-1"></i> ${now.format('jYYYY/jMM/jDD HH:mm:ss')}`;
+}
+setInterval(updateDateTime, 1000);
+updateDateTime();
+
+// ============================================================
+//  تبدیل تاریخ میلادی به شمسی
+// ============================================================
+function toJalali(dateStr) {
+    if (!dateStr) return '-';
+    const m = moment(dateStr, 'YYYY-MM-DD HH:mm');
+    if (!m.isValid()) return dateStr;
+    return m.locale('fa').format('jYYYY/jMM/jDD HH:mm');
+}
+
+function toJalaliDate(dateStr) {
+    if (!dateStr) return '-';
+    const m = moment(dateStr, 'YYYY-MM-DD');
+    if (!m.isValid()) return dateStr;
+    return m.locale('fa').format('jYYYY/jMM/jDD');
+}
+
+// ============================================================
+//  تبدیل تاریخ شمسی به میلادی (برای فیلتر)
+// ============================================================
+function jalaliToGregorian(jalaliStr) {
+    if (!jalaliStr) return null;
+    try {
+        const parts = jalaliStr.split('/');
+        if (parts.length !== 3) return null;
+        const year = parseInt(parts[0]);
+        const month = parseInt(parts[1]);
+        const day = parseInt(parts[2]);
+        if (isNaN(year) || isNaN(month) || isNaN(day)) return null;
+        
+        const pDate = new persianDate([year, month, day]);
+        const gregorian = pDate.toDate();
+        return gregorian.toISOString().split('T')[0];
+    } catch (e) {
+        return null;
+    }
+}
+
+// ============================================================
 //  تبدیل خودکار به حروف بزرگ
 // ============================================================
 function autoUpperCase(input) {
@@ -21,7 +70,7 @@ function autoUpperCase(input) {
 }
 
 // ============================================================
-//  فیلدهای شرطی (دینامیک) - بدون placeholder
+//  فیلدهای شرطی (دینامیک)
 // ============================================================
 function updateDynamicFields() {
     const cat = document.getElementById('catInput').value.trim();
@@ -356,7 +405,7 @@ function addFileFromProduct() {
 }
 
 // ============================================================
-//  گزارش کامل
+//  گزارش کامل (با تاریخ شمسی)
 // ============================================================
 function renderReport() {
     const search = document.getElementById('reportSearch').value.trim().toLowerCase();
@@ -365,12 +414,22 @@ function renderReport() {
         item.model.includes(search) || item.asset.includes(search) ||
         (item.productCode && item.productCode.includes(search))
     );
-    const from = document.getElementById('filterDateFrom')?.value;
-    const to = document.getElementById('filterDateTo')?.value;
+
+    // فیلتر تاریخ شمسی
+    const fromInput = document.getElementById('filterDateFrom')?.value.trim();
+    const toInput = document.getElementById('filterDateTo')?.value.trim();
     const catFilter = document.getElementById('filterCategory')?.value;
-    if (from) data = data.filter(item => item.date.split(' ')[0] >= from);
-    if (to) data = data.filter(item => item.date.split(' ')[0] <= to);
+
+    if (fromInput) {
+        const gregFrom = jalaliToGregorian(fromInput);
+        if (gregFrom) data = data.filter(item => item.date.split(' ')[0] >= gregFrom);
+    }
+    if (toInput) {
+        const gregTo = jalaliToGregorian(toInput);
+        if (gregTo) data = data.filter(item => item.date.split(' ')[0] <= gregTo);
+    }
     if (catFilter) data = data.filter(item => item.category === catFilter);
+
     filteredData = data;
 
     const groups = {};
@@ -444,7 +503,7 @@ function renderReport() {
                                         <td><code>${it.asset || '-'}</code></td>
                                         <td>${it.productCode}</td>
                                         <td>${extra}</td>
-                                        <td>${it.date}</td>
+                                        <td>${toJalali(it.date)}</td>
                                         <td>
                                             <button class="btn btn-sm btn-outline-primary me-1" onclick="openEditModal(${it.id})"><i class="fas fa-edit"></i></button>
                                             <button class="btn btn-sm btn-outline-danger" onclick="deleteProduct(${it.id})"><i class="fas fa-trash"></i></button>
@@ -497,7 +556,7 @@ function exportCategoryExcel() {
             'شماره سریال': (item.category === 'دوربین' || item.category === 'دزدگیر') ? (item.serialNumber || '') : '',
             'سلامت': health,
             'حجم': volume,
-            'تاریخ ثبت': item.date
+            'تاریخ ثبت': toJalali(item.date)
         };
     });
     downloadExcel(data, 'دسته_بندی_اجناس');
@@ -521,14 +580,14 @@ function exportReportExcel() {
             'شماره سریال': (item.category === 'دوربین' || item.category === 'دزدگیر') ? (item.serialNumber || '') : '',
             'سلامت': health,
             'حجم': volume,
-            'تاریخ ثبت': item.date
+            'تاریخ ثبت': toJalali(item.date)
         };
     });
     downloadExcel(data, 'گزارش_کامل');
 }
 
 // ============================================================
-//  خروجی اکسل با استایل (راست‌چین، هدر سبز، سطرهای متناوب)
+//  خروجی اکسل با استایل
 // ============================================================
 function downloadExcel(data, filename) {
     if (data.length === 0) {
@@ -596,19 +655,26 @@ function downloadExcel(data, filename) {
 }
 
 // ============================================================
-//  مدیریت فایل‌ها
+//  مدیریت فایل‌ها (با تاریخ شمسی)
 // ============================================================
 function renderFiles() {
     const search = document.getElementById('fileSearch').value.trim().toLowerCase();
-    const dateFilter = document.getElementById('fileDateFilter').value;
+    const dateFilter = document.getElementById('fileDateFilter').value.trim();
     const catFilter = document.getElementById('fileCategoryFilter').value;
+
     let filtered = files.filter(f => {
         let match = true;
         if (search && !f.name.includes(search) && !f.desc.includes(search)) match = false;
-        if (dateFilter && f.date !== dateFilter) match = false;
         if (catFilter && f.category !== catFilter) match = false;
+        
+        // فیلتر تاریخ شمسی
+        if (dateFilter) {
+            const gregDate = jalaliToGregorian(dateFilter);
+            if (gregDate && f.date !== gregDate) match = false;
+        }
         return match;
     });
+
     const container = document.getElementById('filesContainer');
     if (filtered.length === 0) {
         container.innerHTML = '<div class="text-center py-5 text-muted">هیچ فایلی با این شرایط یافت نشد.</div>';
@@ -620,7 +686,7 @@ function renderFiles() {
                 <i class="fas fa-file-pdf text-danger me-2 fs-4"></i>
                 <strong>${f.name}</strong>
                 <span class="badge bg-rosegold bg-opacity-10 text-rosegold mx-2">${f.category}</span>
-                <small class="text-muted">${f.date}</small>
+                <small class="text-muted">${toJalaliDate(f.date)}</small>
                 <p class="text-muted small mb-0">${f.desc}</p>
             </div>
             <div class="file-actions">
@@ -630,6 +696,7 @@ function renderFiles() {
         </div>
     `).join('');
 }
+
 function deleteFile(id) {
     const file = files.find(f => f.id === id);
     if (!file) return;
@@ -645,7 +712,7 @@ function openEditFileModal(id) {
     if (!file) return;
     document.getElementById('editFileId').value = file.id;
     document.getElementById('editFileName').value = file.name;
-    document.getElementById('editFileDate').value = file.date;
+    document.getElementById('editFileDate').value = toJalaliDate(file.date);
     document.getElementById('editFileDesc').value = file.desc;
     const catSelect = document.getElementById('editFileCategory');
     const currentCats = [...new Set(inventory.map(i => i.category))];
@@ -663,14 +730,26 @@ function saveFileEdit() {
     const id = parseInt(document.getElementById('editFileId').value);
     const name = document.getElementById('editFileName').value.trim();
     const category = document.getElementById('editFileCategory').value;
-    const date = document.getElementById('editFileDate').value;
+    const dateShamsi = document.getElementById('editFileDate').value.trim();
     const desc = document.getElementById('editFileDesc').value.trim();
-    if (!name || !category || !date) { alert('لطفاً تمام فیلدهای اجباری را پر کنید!'); return; }
+
+    if (!name || !category || !dateShamsi) {
+        alert('لطفاً تمام فیلدهای اجباری را پر کنید!');
+        return;
+    }
+
+    // تبدیل تاریخ شمسی به میلادی
+    const gregDate = jalaliToGregorian(dateShamsi);
+    if (!gregDate) {
+        alert('فرمت تاریخ صحیح نیست! مثال: 1403/01/01');
+        return;
+    }
+
     const file = files.find(f => f.id === id);
     if (!file) return;
     file.name = name;
     file.category = category;
-    file.date = date;
+    file.date = gregDate;
     file.desc = desc || '';
     bootstrap.Modal.getInstance(document.getElementById('editFileModal')).hide();
     renderFiles();
@@ -694,7 +773,7 @@ function exportFilesExcel() {
     const data = files.map(f => ({
         'نام فایل': f.name,
         'دسته‌بندی': f.category,
-        'تاریخ': f.date,
+        'تاریخ': toJalaliDate(f.date),
         'توضیحات': f.desc
     }));
     downloadExcel(data, 'لیست_فایل‌ها');
@@ -716,6 +795,7 @@ function updateFilterOptions() {
         sel.value = current;
     });
 }
+
 function renderCategoryTable() {
     const tbody = document.getElementById('categoryTableBody');
     tbody.innerHTML = '';
@@ -740,7 +820,7 @@ function renderCategoryTable() {
                 <td><code>${item.asset || '-'}</code></td>
                 <td>${item.productCode}</td>
                 <td>${extra}</td>
-                <td>${item.date}</td>
+                <td>${toJalali(item.date)}</td>
                 <td>
                     <button class="btn btn-sm btn-outline-primary me-1" onclick="openEditModal(${item.id})"><i class="fas fa-edit"></i></button>
                     <button class="btn btn-sm btn-outline-danger" onclick="deleteProduct(${item.id})"><i class="fas fa-trash"></i></button>
@@ -752,7 +832,51 @@ function renderCategoryTable() {
 }
 
 // ============================================================
-//  افکت سه‌بعدی (فقط روی کارت، بدون تأثیر روی فرزندان)
+//  مقداردهی اولیه
+// ============================================================
+function init() {
+    renderCategoryTable();
+    renderReport();
+    renderFiles();
+    updateFilterOptions();
+    
+    // فعال‌سازی datepicker شمسی برای فیلدهای تاریخ
+    if (typeof persianDatepicker !== 'undefined') {
+        try {
+            // فیلدهای تاریخ در مودال فیلتر
+            const options = {
+                format: 'YYYY/MM/DD',
+                autoClose: true,
+                initialValue: false,
+                calendar: {
+                    persian: {
+                        locale: 'fa'
+                    }
+                }
+            };
+            persianDatepicker(document.getElementById('filterDateFrom'), options);
+            persianDatepicker(document.getElementById('filterDateTo'), options);
+            persianDatepicker(document.getElementById('fileDateFilter'), options);
+            persianDatepicker(document.getElementById('editFileDate'), options);
+        } catch(e) {
+            console.log('Persian datepicker not available');
+        }
+    }
+    
+    document.querySelectorAll('#mainTabs .nav-link').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('#mainTabs .nav-link').forEach(b => {
+                b.classList.remove('active-tab-green', 'active-tab-blue', 'active-tab-rose');
+            });
+            if (this.id === 'tab-category') this.classList.add('active-tab-green');
+            else if (this.id === 'tab-report') this.classList.add('active-tab-blue');
+            else if (this.id === 'tab-files') this.classList.add('active-tab-rose');
+        });
+    });
+}
+
+// ============================================================
+//  افکت سه‌بعدی
 // ============================================================
 document.querySelectorAll('.card-3d').forEach(card => {
     card.addEventListener('mousemove', function(e) {
@@ -772,23 +896,4 @@ document.querySelectorAll('.card-3d').forEach(card => {
     });
 });
 
-// ============================================================
-//  مقداردهی اولیه
-// ============================================================
-function init() {
-    renderCategoryTable();
-    renderReport();
-    renderFiles();
-    updateFilterOptions();
-    document.querySelectorAll('#mainTabs .nav-link').forEach(btn => {
-        btn.addEventListener('click', function() {
-            document.querySelectorAll('#mainTabs .nav-link').forEach(b => {
-                b.classList.remove('active-tab-green', 'active-tab-blue', 'active-tab-rose');
-            });
-            if (this.id === 'tab-category') this.classList.add('active-tab-green');
-            else if (this.id === 'tab-report') this.classList.add('active-tab-blue');
-            else if (this.id === 'tab-files') this.classList.add('active-tab-rose');
-        });
-    });
-}
 document.addEventListener('DOMContentLoaded', init);
